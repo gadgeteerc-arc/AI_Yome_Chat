@@ -1,0 +1,494 @@
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur, 20px));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 20px));
+    border-left: 1px solid var(--glass-border);
+    border-right: 1px solid var(--glass-border);
+    overflow: hidden;
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Frost & Noise Overlay */
+.chat-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise-url);
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* 画像鑑賞モード */
+.chat-container.peek-mode {
+    background: transparent;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.chat-container.peek-mode::before {
+    opacity: 0;
+}
+
+.chat-container.peek-mode .messages-area,
+.chat-container.peek-mode .input-area {
+    opacity: 0.02;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.chat-container.peek-mode .chat-header {
+    opacity: 0.2;
+}
+
+/* Header - Bento Style */
+.chat-header {
+    flex-shrink: 0;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.03);
+    position: relative;
+    z-index: 20;
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.header-info h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    /* Bento rounding */
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent-primary), #ec4899);
+    padding: 2px;
+    background-clip: padding-box;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 20px var(--accent-glow);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avatar-wrapper:hover {
+    transform: scale(1.05) rotate(-2deg);
+}
+
+.header-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 15px #ef4444;
+    position: relative;
+}
+
+.status-dot.connected {
+    background: #10b981;
+    box-shadow: 0 0 15px #10b981;
+}
+
+.status-dot::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0.5;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* Action Buttons - Spring & Glow */
+.action-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--fg-light);
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-border);
+    color: #fff;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px var(--accent-glow);
+}
+
+.action-btn:active {
+    transform: scale(0.9);
+}
+
+.action-btn.active {
+    background: var(--accent-glow);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    box-shadow: inset 0 0 10px var(--accent-glow);
+}
+
+.messages-area {
+    flex: 1;
+    min-height: 0;
+    padding: 32px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    z-index: 20;
+}
+
+.message-wrapper {
+    display: flex;
+    gap: 16px;
+    max-width: 85%;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* @starting-style for smooth appearance (Modern CSS) */
+@starting-style {
+    .message-wrapper {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+}
+
+.message-wrapper.is-user {
+    flex-direction: row-reverse;
+    align-self: flex-end;
+}
+
+.msg-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.msg-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Message Content Wrapper (Bubble + Meta) */
+.message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.is-user .message-content {
+    align-items: flex-end;
+}
+
+/* Message Bubble - Frost & Noise Focus */
+.message-bubble {
+    position: relative;
+    padding: 16px 20px;
+    border-radius: 20px;
+    font-size: var(--chat-font-size, 1rem);
+    /* Dynamic Font Size */
+    line-height: 1.6;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.message-timestamp {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0 8px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+.message-bubble::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise-url);
+    opacity: 0.04;
+    pointer-events: none;
+}
+
+.is-user .message-bubble {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px 20px 4px 20px;
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+}
+
+.is-yome .message-bubble {
+    background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+    border-radius: 20px 20px 20px 4px;
+    border: none;
+    color: #fff;
+    box-shadow: 0 10px 25px var(--accent-glow);
+}
+
+/* Input Area - Bento Polishing */
+.input-area {
+    flex-shrink: 0;
+    padding: 24px 32px 32px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    z-index: 20;
+}
+
+.chat-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 16px 20px;
+    color: #fff;
+    font-size: 1.05rem;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    resize: none;
+    line-height: 1.6;
+    max-height: 200px;
+}
+
+.chat-input:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.send-btn {
+    background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+    border: none;
+    border-radius: 16px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 8px 20px var(--accent-glow);
+}
+
+.send-btn:hover:not(:disabled) {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 30px var(--accent-glow);
+}
+
+.send-btn:active {
+    transform: scale(0.95);
+}
+
+.send-btn:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* Typing Indicator Enhancement */
+.typing-indicator {
+    display: flex;
+    gap: 6px;
+    padding: 12px 18px;
+    background: var(--glass-bg);
+    border-radius: 15px;
+    width: fit-content;
+    border: 1px solid var(--glass-border);
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+
+    30% {
+        transform: translateY(-6px);
+        opacity: 1;
+        box-shadow: 0 5px 10px var(--accent-glow);
+    }
+}
+
+/* JSON表示パネル */
+.json-panel {
+    position: absolute;
+    top: 0;
+    right: -400px;
+    /* 初期状態は画面外 */
+    width: 400px;
+    height: 100%;
+    background: rgba(15, 17, 26, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
+}
+
+.json-panel.open {
+    right: 0;
+}
+
+.json-panel-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.json-close-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.json-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.json-panel-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.json-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.json-panel-content pre {
+    margin: 0;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    color: #a855f7;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* スクロールバーのカスタマイズ（JSONパネル内） */
+.json-panel-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.json-panel-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.json-panel-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.json-panel-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}

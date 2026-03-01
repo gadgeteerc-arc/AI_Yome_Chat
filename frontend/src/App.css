@@ -1,0 +1,129 @@
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+}
+
+/* Mesh Gradient & Noise Background Layer */
+.app-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* Complex Mesh Gradient */
+  background:
+    radial-gradient(at 0% 0%, hsl(from var(--accent-primary) h s l / 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.app-container::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--noise-url);
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* 背景画像（Generated Imagesフォルダの最新画像） */
+.app-bg-image {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* 横フィットを解消し、元サイズ比率を維持 */
+  z-index: 0;
+  /* Behind the mesh and noise */
+  opacity: 0;
+  filter: brightness(0.6) saturate(1.2);
+  /* Blend better with UI */
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.app-bg-image.loaded {
+  opacity: 1;
+}
+
+.main-content {
+  width: 45vw;
+  min-width: 650px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Premium Shadow for Bento Container */
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+}
+
+/* 立ち絵表示エリア（チャットの左側） */
+.tachie-area {
+  position: fixed;
+  left: 5vw;
+  bottom: 0;
+  width: calc((100vw - 45vw) / 2 - 5vw);
+  height: 90%;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tachie-image {
+  max-width: 140%;
+  /* Preimum size */
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  opacity: 0;
+  transform: translateY(20px);
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4));
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tachie-image.loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tachie-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Scroll-Driven Animation Helper (Modern CSS) */
+/* We could add something like background position shift based on scroll */
+/* 
+.messages-area {
+  view-timeline: --scroll-timeline block;
+}
+.app-container::before {
+  animation: move-bg 1s linear both;
+  animation-timeline: --scroll-timeline;
+}
+*/

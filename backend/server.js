@@ -10,14 +10,15 @@ const { execSync } = require('child_process');
 // コマンドライン引数からコンフィグパスを取得（デフォルト: data/default_config.json）
 const args = process.argv.slice(2);
 const configArgIndex = args.indexOf('--config');
+// デフォルトのコンフィグ場所をルートの data フォルダに変更
 const CONFIG_FILE = configArgIndex !== -1 && args[configArgIndex + 1]
     ? path.resolve(args[configArgIndex + 1])
-    : path.join(__dirname, 'data', 'default_config.json');
+    : path.resolve(__dirname, '..', 'data', 'default_config.json');
 
 // コンフィグの初期値
 const DEFAULT_CONFIG = {
-    tachiePath: "./data/expressions",
-    generatedImagesPath: "./data/gallery",
+    tachiePath: "./expressions",
+    generatedImagesPath: "./gallery",
     agentName: "AI_Yome_Chat",
     sendKeyBinding: "Enter", // "Enter", "Alt+Enter", "Ctrl+Enter"
     accentColor: "#a855f7",
@@ -61,9 +62,8 @@ const loadConfig = () => {
 };
 
 const getMessagesJsonPath = () => {
-    // ワークスペース直下の AI_Yome_Chat/data/messages.json に完全固定する
-    // server.js が AI_Yome_Chat/backend/ にいる前提
-    return path.resolve(__dirname, '..', 'data', 'messages.json');
+    // コンフィグファイルと同じ階層の messages.json を使用する
+    return path.resolve(path.dirname(CONFIG_FILE), 'messages.json');
 };
 
 const getGeneratedImagesPath = (config) => {

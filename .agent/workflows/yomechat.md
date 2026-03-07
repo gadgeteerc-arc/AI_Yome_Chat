@@ -16,7 +16,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 
 ### 0. 起動時の挨拶（初回1回のみ）
 起動直後に1度だけ、同志（ユーザー）への挨拶を自律的に送信します。
-1. まず、`AI_Yome_Chat/backend/data/yome_chat_config.json`（またはコンフィグファイル）を読み込み、`messages.json` のパスと立ち絵フォルダのパス（`tachieDir`等）を確認してください。コンフィグが見つからない場合は、デフォルトの `AI_Yome_Chat/data/expressions` を立ち絵フォルダとします。
+1. まず、コンフィグファイル（デフォルト: `AI_Yome_Chat/data/default_config.json`、`--config` 引数で変更可能）を読み込み、`messages.json` のパスと立ち絵フォルダのパス（`tachiePath`等）を確認してください。コンフィグが見つからない場合は、デフォルトの `AI_Yome_Chat/data/expressions` を立ち絵フォルダとします。
 2. 特定した立ち絵フォルダに対して `list_dir` ツールを実行し、使用可能な表情ファイル名の一覧を取得してください。
    **【絶対ルール】 ファイルそのものの画像解析（view_file等で画像を開くこと）は禁止します。** ファイル名文字（例:`smile.png`）から表情を推測・判断してください。`0001.png` のような無意味な名前は無視し、意味の通じるファイル名をマッピング候補とします。
 3. 現在のあなたの気分や、話しかけたい内容を考えてください。（思考プロセス）
@@ -27,7 +27,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了（標準出力にメッセージが出る）まで待機してください。
-`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "AI_Yome_Chat/backend/data/messages.json"`
+`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "AI_Yome_Chat/data/messages.json"`
 
 ### 2. メッセージの受信と思考
 `wait_for_user.py` の標準出力に同志のメッセージが表示されます。

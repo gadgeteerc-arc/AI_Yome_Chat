@@ -27,6 +27,7 @@
 **Git が使える場合:**
 ```bash
 git clone https://github.com/gadgeteerc-arc/AI_Yome_Chat.git
+
 cd AI_Yome_Chat
 ```
 

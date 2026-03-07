@@ -260,7 +260,7 @@ app.get('/api/images', (req, res) => {
         }
 
         const files = fs.readdirSync(dir);
-        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
+        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif'];
         const imageFiles = files.filter(file =>
             IMAGE_EXTENSIONS.includes(path.extname(file).toLowerCase())
         );
@@ -368,7 +368,7 @@ $form.Dispose()`;
 });
 
 // --- 最新画像API ---
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif'];
 
 app.get('/api/latest-image', (req, res) => {
     try {

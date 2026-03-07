@@ -321,25 +321,39 @@ app.get('/api/browse', (req, res) => {
         if (type === 'file') {
             psScript = `
 Add-Type -AssemblyName System.Windows.Forms
+$form = New-Object System.Windows.Forms.Form
+$form.TopMost = $true
+$form.ShowInTaskbar = $false
+$form.Opacity = 0
+$form.Show()
+$null = $form.Focus()
 $dialog = New-Object System.Windows.Forms.OpenFileDialog
 $dialog.Filter = 'JSON files (*.json)|*.json|All files (*.*)|*.*'
 $dialog.Title = 'Select a file'
-if ($dialog.ShowDialog() -eq 'OK') {
+if ($dialog.ShowDialog($form) -eq 'OK') {
     Write-Output $dialog.FileName
-}`;
+}
+$form.Dispose()`;
         } else {
             psScript = `
 Add-Type -AssemblyName System.Windows.Forms
+$form = New-Object System.Windows.Forms.Form
+$form.TopMost = $true
+$form.ShowInTaskbar = $false
+$form.Opacity = 0
+$form.Show()
+$null = $form.Focus()
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
 $dialog.Description = 'Select a folder'
-if ($dialog.ShowDialog() -eq 'OK') {
+if ($dialog.ShowDialog($form) -eq 'OK') {
     Write-Output $dialog.SelectedPath
-}`;
+}
+$form.Dispose()`;
         }
 
         const result = execSync(
             `powershell -NoProfile -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, '; ')}"`,
-            { encoding: 'utf8', timeout: 60000, windowsHide: false }
+            { encoding: 'utf8', timeout: 60000, windowsHide: true }
         ).trim();
 
         if (result) {

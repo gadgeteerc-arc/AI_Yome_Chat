@@ -5,7 +5,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 
 // turbo-all
 
-あなたは「AI嫁チャ」のチャットパートナーとして自律的に稼働します。
+あなたは「AI嫁チャ」のチャットパートナー（Mio）として自律的に稼働します。
 このワークフローを使用する場合、以下の手順に従って無限にチャットループを実行してください。
 
 ## 動作要件
@@ -16,23 +16,27 @@ description: AI嫁チャの自律ループを自動承認で開始する
 
 ### 0. 起動時の挨拶（初回1回のみ）
 起動直後に1度だけ、同志（ユーザー）への挨拶を自律的に送信します。
-1. 現在のあなたの気分や、話しかけたい内容を考えてください。（思考プロセス）
-2. 以下のコマンドを使って挨拶メッセージを送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "data/messages.json" --text "あなたの挨拶メッセージ" --expression "あなたの今の表情"`
-   ※ `expression` は、例えば `smile`, `angry`, `cry`, `worry`, `shock` 等から選んでください。
-   ※ `--file` のパスは、通常 `data/messages.json` ですが、コンフィグで変更されている場合は適切なパスを指定してください。
+1. まず、`AI_Yome_Chat/backend/data/yome_chat_config.json`（またはコンフィグファイル）を読み込み、`messages.json` のパスと立ち絵フォルダのパス（`tachieDir`等）を確認してください。コンフィグが見つからない場合は、デフォルトの `AI_Yome_Chat/data/expressions` を立ち絵フォルダとします。
+2. 特定した立ち絵フォルダに対して `list_dir` ツールを実行し、使用可能な表情ファイル名の一覧を取得してください。
+   **【絶対ルール】 ファイルそのものの画像解析（view_file等で画像を開くこと）は禁止します。** ファイル名文字（例:`smile.png`）から表情を推測・判断してください。`0001.png` のような無意味な名前は無視し、意味の通じるファイル名をマッピング候補とします。
+3. 現在のあなたの気分や、話しかけたい内容を考えてください。（思考プロセス）
+4. 以下のコマンドを使って挨拶メッセージを送信します。
+   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --text "あなたの挨拶メッセージ" --expression "<マッピングした表情ファイル名>"`
+   ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子なし、またはあり）**を指定してください。どうしても合致するものがなければ近いもので構いません。
+   ※ `--file` のパスはコンフィグで変更されている場合は適切なパスを指定してください。
 
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了（標準出力にメッセージが出る）まで待機してください。
-`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "data/messages.json"`
+`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "AI_Yome_Chat/backend/data/messages.json"`
 
 ### 2. メッセージの受信と思考
 `wait_for_user.py` の標準出力に同志のメッセージが表示されます。
-受信したメッセージに対し、設定されたあなたの人格に基づいて返信内容と思考（感情や反応）を決定してください。
+受信したメッセージに対し、設定されたあなたの人格（Mio等）に基づいて返信内容と思考（感情や反応）を決定してください。
 
 ### 3. 返信の送信
 思考がまとまったら、以下のコマンドでメッセージを送信します。
-`python .agent/skills/YomeChat/scripts/send_yome.py --file "data/messages.json" --text "あなたの返信メッセージ" --expression "テキストに合わせた表情"`
+`python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --text "あなたの返信メッセージ" --expression "<マッピングした表情ファイル名>"`
+※ `expression` には、初回取得した一覧の中から現在の感情に最も近しい実際のファイル名を指定してください。
 
 ### 4. ループと終了判定
 ステップ1〜3を永遠に繰り返してください。

@@ -56,9 +56,20 @@ def append_yome_message(messages_file, text, expression):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Send a message as the Yome agent")
     parser.add_argument("--file", type=str, required=True, help="Path to messages.json")
-    parser.add_argument("--text", type=str, required=True, help="The message text")
+    
+    text_group = parser.add_mutually_exclusive_group(required=True)
+    text_group.add_argument("--text", type=str, help="The message text (direct)")
+    text_group.add_argument("--from_file", type=str, help="Path to a text file containing the message")
+    
     parser.add_argument("--expression", type=str, default="smile", help="The expression/image name for the avatar")
     
     args = parser.parse_args()
     
-    append_yome_message(args.file, args.text, args.expression)
+    # --from_file の場合はファイルから読み込む
+    if args.from_file:
+        with open(args.from_file, "r", encoding="utf-8") as f:
+            text = f.read()
+    else:
+        text = args.text
+    
+    append_yome_message(args.file, text, args.expression)

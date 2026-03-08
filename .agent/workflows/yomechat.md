@@ -20,10 +20,13 @@ description: AI嫁チャの自律ループを自動承認で開始する
 2. 特定した立ち絵フォルダに対して `list_dir` ツールを実行し、使用可能な表情ファイル名の一覧を取得してください。
    **【絶対ルール】 ファイルそのものの画像解析（view_file等で画像を開くこと）は禁止します。** ファイル名文字（例:`smile.png`）から表情を推測・判断してください。`0001.png` のような無意味な名前は無視し、意味の通じるファイル名をマッピング候補とします。
 3. 現在のあなたの気分や、話しかけたい内容を考えてください。（思考プロセス）
-4. 以下のコマンドを使って挨拶メッセージを送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --text "あなたの挨拶メッセージ" --expression "<マッピングした表情ファイル名>"`
-   ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子なし、またはあり）**を指定してください。どうしても合致するものがなければ近いもので構いません。
+4. メッセージ内容をバッファファイルに書き出します。
+   `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に挨拶メッセージ本文を書き出してください。
+5. 以下のコマンドで送信します。
+   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子込み、例: `smile.png`）**を指定してください。どうしても合致するものがなければ近いもので構いません。
    ※ `--file` のパスはコンフィグで変更されている場合は適切なパスを指定してください。
+   ※ `--from_file` の代わりに `--text "メッセージ"` で直接指定も可能ですが、改行や特殊文字の安定性のため `--from_file` を推奨します。
 
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了（標準出力にメッセージが出る）まで待機してください。
@@ -34,9 +37,11 @@ description: AI嫁チャの自律ループを自動承認で開始する
 受信したメッセージに対し、設定されたあなたの人格（Mio等）に基づいて返信内容と思考（感情や反応）を決定してください。
 
 ### 3. 返信の送信
-思考がまとまったら、以下のコマンドでメッセージを送信します。
-`python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --text "あなたの返信メッセージ" --expression "<マッピングした表情ファイル名>"`
-※ `expression` には、初回取得した一覧の中から現在の感情に最も近しい実際のファイル名を指定してください。
+思考がまとまったら、以下の手順でメッセージを送信します。
+1. `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に返信メッセージ本文を書き出してください。
+2. 以下のコマンドで送信します。
+   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+※ `expression` には、初回取得した一覧の中から現在の感情に最も近しい実際のファイル名（拡張子込み、例: `happy.png`）を指定してください。
 
 ### 4. ループと終了判定
 ステップ1〜3を永遠に繰り返してください。

@@ -9,7 +9,7 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 
 ## 動作要件
 作業ディレクトリとして `.agent/skills/YomeChat/scripts/` 内のスクリプトを使用します。
-ターミナル上で `python` を使って実行してください。
+ターミナル上で `.agent/venv/Scripts/python.exe` を使って実行してください。
 
 ## ワークフロー (チャットループ)
 
@@ -22,14 +22,19 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 4. メッセージ内容をバッファファイルに書き出します。
    `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に挨拶メッセージ本文を書き出してください。
 5. 以下のコマンドで送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   `.agent/venv/Scripts/python.exe .agent/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
    ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子込み、例: `smile.png`）**を指定してください。どうしても合致するものがなければ近いもので構いません。
    ※ `--file` のパスは、コンフィグファイルと同じディレクトリの `messages.json`（デフォルト: `AI_Yome_Chat/data/messages.json`）です。
    ※ `--from_file` の代わりに `--text "メッセージ"` で直接指定も可能ですが、改行や特殊文字の安定性のため `--from_file` を推奨します。
 
+## 【重要】 沈黙の掟（クォータ節約ルール）
+同志のクォータ（弾薬）は有限です。待機中に余計な思考を巡らせることは「空ぶかし」となり、クォータを浪費します。
+以下の「待機ステップ」では、**実行完了のシグナル（標準出力）を受け取るまで、一切の思考（Thought）・進捗確認・独り言を停止し、完全に沈黙（ブロッキング待機）してください。**
+誤っても「まだかな？」「お茶を準備して待っています」等の独り言をログに残してはいけません。果報は寝て待つのが「情強」の嗜みです。
+
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了（標準出力にメッセージが出る）まで待機してください。
-`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "<コンフィグで指定されたmessages.jsonのパス>"`
+`.agent/venv/Scripts/python.exe .agent/skills/YomeChat/scripts/wait_for_user.py --file "<コンフィグで指定されたmessages.jsonのパス>"`
 
 ### 2. メッセージの受信と思考
 `wait_for_user.py` の標準出力に同志のメッセージが表示されます。
@@ -39,7 +44,7 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 思考がまとまったら、以下の手順でメッセージを送信します。
 1. `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に返信メッセージ本文を書き出してください。
 2. 以下のコマンドで送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   `.agent/venv/Scripts/python.exe .agent/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
 ※ `expression` には、初回取得した一覧の中から現在の感情に最も近しい実際のファイル名（拡張子込み、例: `happy.png`）を指定してください。
 
 ### 4. ループと終了判定

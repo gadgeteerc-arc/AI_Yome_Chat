@@ -20,14 +20,14 @@ Get-Process -Name node -ErrorAction SilentlyContinue | ForEach-Object { Stop-Pro
 Start-Sleep -Seconds 5
 ```
 
-3. バックエンドを起動する
+3. バックエンドを起動する（コンフィグパスは状況に応じて変更）
 ```powershell
-Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", "cd backend; node server.js"
+Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", "cd d:\AntigravityProject\Daru\AI_Yome_Chat\backend; node server.js --config data/agent_mio.json"
 ```
 
 4. フロントエンドを起動する
 ```powershell
-Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", "cd frontend; npm run dev"
+Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", "cd d:\AntigravityProject\Daru\AI_Yome_Chat\frontend; npm run dev"
 ```
 
 ## 注意事項

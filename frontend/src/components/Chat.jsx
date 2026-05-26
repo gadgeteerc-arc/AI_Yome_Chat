@@ -4,8 +4,8 @@ import { Send, User, Sparkles, SlidersHorizontal, Eye, EyeOff, FileJson, X, Imag
 import ConfigModal from './ConfigModal';
 import './Chat.css';
 
-const WS_URL = 'ws://localhost:3001';
-const API_URL = 'http://localhost:3001/api/chat';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/chat';
 
 const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => {
     const [messages, setMessages] = useState([]);

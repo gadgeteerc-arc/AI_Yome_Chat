@@ -15,6 +15,16 @@ const CONFIG_FILE = configArgIndex !== -1 && args[configArgIndex + 1]
     ? path.resolve(args[configArgIndex + 1])
     : path.resolve(__dirname, '..', 'data', 'default_config.json');
 
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const PID_FILE = path.resolve(path.dirname(CONFIG_FILE), 'server.pid');
+
+const isSafePath = (targetPath) => {
+    const absolutePath = path.resolve(path.dirname(CONFIG_FILE), targetPath);
+    const absoluteRoot = path.resolve(PROJECT_ROOT);
+    return absolutePath.startsWith(absoluteRoot);
+};
+
+
 // コンフィグの初期値
 const DEFAULT_CONFIG = {
     tachiePath: "./expressions",
@@ -216,6 +226,12 @@ app.post('/api/config', (req, res) => {
             return res.status(400).json({ error: 'Invalid config format' });
         }
 
+        // パストラバーサル脆弱性の防御 (Task-03)
+        if (!isSafePath(newConfig.tachiePath) || !isSafePath(newConfig.generatedImagesPath)) {
+            return res.status(400).json({ error: 'Invalid path: Traversal detected' });
+        }
+
+
         // コンフィグ保存
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2));
         currentConfig = newConfig;
@@ -260,7 +276,7 @@ app.get('/api/images', (req, res) => {
         }
 
         const files = fs.readdirSync(dir);
-        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif'];
+        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
         const imageFiles = files.filter(file =>
             IMAGE_EXTENSIONS.includes(path.extname(file).toLowerCase())
         );
@@ -368,7 +384,7 @@ $form.Dispose()`;
 });
 
 // --- 最新画像API ---
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif'];
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
 
 app.get('/api/latest-image', (req, res) => {
     try {
@@ -405,6 +421,38 @@ app.get('/api/latest-image', (req, res) => {
     }
 });
 
+const cleanupPid = () => {
+    try {
+        if (fs.existsSync(PID_FILE)) {
+            fs.unlinkSync(PID_FILE);
+            console.log(`PID file removed: ${PID_FILE}`);
+        }
+    } catch (err) {
+        console.error('Failed to remove PID file:', err);
+    }
+};
+
+process.on('SIGINT', () => {
+    cleanupPid();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    cleanupPid();
+    process.exit(0);
+});
+
+process.on('exit', () => {
+    cleanupPid();
+});
+
 server.listen(PORT, () => {
     console.log(`Backend server is running on http://localhost:${PORT}`);
+    try {
+        fs.writeFileSync(PID_FILE, process.pid.toString(), 'utf8');
+        console.log(`PID written to ${PID_FILE}: ${process.pid}`);
+    } catch (err) {
+        console.error('Failed to write PID file:', err);
+    }
 });
+

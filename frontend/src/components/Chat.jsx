@@ -7,15 +7,45 @@ import './Chat.css';
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/chat';
 
-const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => {
+const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery, onLatestImageUpdate }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isPeekMode, setIsPeekMode] = useState(false);
     const [showJson, setShowJson] = useState(false);
+    const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
     const messagesEndRef = useRef(null);
     const wsRef = useRef(null);
+    const reconnectDelayRef = useRef(1000);
+    const reconnectTimerRef = useRef(null);
+
+    const unlockAudio = () => {
+        if (isAudioUnlocked) return;
+        
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                const audioCtx = new AudioContextClass();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            }
+            
+            // ダミーの無音再生でブラウザの自動再生ガードを解除するお！
+            const dummyAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA');
+            dummyAudio.play()
+                .then(() => {
+                    console.log('[Audio] Browser autoplay policy unlocked successfully!');
+                    setIsAudioUnlocked(true);
+                })
+                .catch((err) => {
+                    console.warn('[Audio] Autoplay unlock playback was ignored or blocked:', err);
+                });
+        } catch (e) {
+            console.error('[Audio] Failed to initialize AudioContext for unlock:', e);
+        }
+    };
 
     const formatTime = (isoString) => {
         if (!isoString) return '';
@@ -28,23 +58,43 @@ const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => 
     useEffect(() => {
         connectWebSocket();
         return () => {
-            if (wsRef.current) wsRef.current.close();
+            if (wsRef.current) {
+                wsRef.current.onclose = null; // Prevent trigger on manual close
+                wsRef.current.close();
+            }
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+            }
         };
     }, []);
 
     const connectWebSocket = () => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+            return;
+        }
+
         const ws = new WebSocket(WS_URL);
         wsRef.current = ws;
 
         ws.onopen = () => {
             console.log('Connected to WebSocket server');
             setIsConnected(true);
+            reconnectDelayRef.current = 1000; // Reset backoff on success
         };
 
         ws.onclose = () => {
-            console.log('Disconnected, reconnecting in 3s...');
+            const delay = reconnectDelayRef.current;
+            console.log(`Disconnected, reconnecting in ${delay / 1000}s...`);
             setIsConnected(false);
-            setTimeout(connectWebSocket, 3000);
+
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+            }
+
+            reconnectTimerRef.current = setTimeout(() => {
+                connectWebSocket();
+            }, delay);
+            reconnectDelayRef.current = Math.min(delay * 2, 30000); // Exponential backoff up to 30s
         };
 
         ws.onmessage = (event) => {
@@ -52,6 +102,25 @@ const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => 
                 const { type, payload } = JSON.parse(event.data);
                 if (type === 'init' || type === 'update') {
                     setMessages(payload);
+                } else if (type === 'latest-image') {
+                    if (onLatestImageUpdate) {
+                        onLatestImageUpdate(payload);
+                    }
+                } else if (type === 'play-audio') {
+                    console.log('[Audio] Received speech playback request:', payload);
+                    
+                    // config.ttsEnabled の同期ラグを回避するため、
+                    // イベントが届いた＝バックエンドで合成が実行された＝再生すべき！として問答無用で再生するお！
+                    const apiEndpoint = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/chat';
+                    const backendBaseUrl = apiEndpoint.replace('/api/chat', '');
+                    const audioUrl = `${backendBaseUrl}${payload.audioUrl}`;
+                    
+                    console.log('[Audio] Playing speech wav (Direct URL):', audioUrl);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play().catch(err => {
+                        console.warn('[Audio] Automatic playback was blocked or failed:', err);
+                    });
                 }
             } catch (err) {
                 console.error('Failed to parse message:', err);
@@ -108,7 +177,7 @@ const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => 
     };
 
     return (
-        <div className={classNames('chat-container', { 'peek-mode': isPeekMode })}>
+        <div className={classNames('chat-container', { 'peek-mode': isPeekMode })} onClick={unlockAudio}>
             <div className="chat-header">
                 <div className="header-info">
                     <div className="avatar-wrapper">
@@ -163,9 +232,9 @@ const Chat = ({ config, onConfigChange, onExpressionChange, onOpenGallery }) => 
                         <p>まだメッセージがないお！</p>
                     </div>
                 )}
-                {messages.map((msg, idx) => (
+                {messages.slice(-100).map((msg) => (
                     <div
-                        key={idx}
+                        key={msg.id || `${msg.timestamp}-${msg.text}`}
                         className={classNames('message-wrapper', {
                             'is-user': msg.role === 'user',
                             'is-yome': msg.role !== 'user'

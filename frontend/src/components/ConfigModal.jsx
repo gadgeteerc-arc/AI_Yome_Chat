@@ -16,7 +16,20 @@ const ConfigModal = ({ isOpen, onClose }) => {
         accentColor: '#a855f7',
         glassIntensity: 20,
         fontSize: 16,
-        showTimestamp: true
+        showTimestamp: true,
+        ttsEnabled: false,
+        ttsProvider: 'irodori',
+        ttsSettings: {
+            irodori: {
+                url: 'http://localhost:8088',
+                voice: 'sample',
+                seed: 42
+            },
+            voicevox: {
+                url: 'http://localhost:50021',
+                speakerId: 1
+            }
+        }
     });
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -45,11 +58,33 @@ const ConfigModal = ({ isOpen, onClose }) => {
 
     const handleChange = (e) => {
         const target = e.target;
-        const value = target.type === 'checkbox' ? target.checked : target.value;
+        let value = target.type === 'checkbox' ? target.checked : target.value;
         const name = target.name;
-        setConfig(prev => ({ ...prev, [name]: value }));
+
+        // 特定の数値入力項目は数値型としてパースするお！
+        if (target.type === 'number' || name.endsWith('.seed') || name.endsWith('.speakerId')) {
+            const parsed = parseInt(value, 10);
+            value = isNaN(parsed) ? value : parsed;
+        }
+
+        if (name.includes('.')) {
+            const parts = name.split('.');
+            setConfig(prev => {
+                const newConfig = { ...prev };
+                let current = newConfig;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    current[parts[i]] = { ...current[parts[i]] };
+                    current = current[parts[i]];
+                }
+                current[parts[parts.length - 1]] = value;
+                return newConfig;
+            });
+        } else {
+            setConfig(prev => ({ ...prev, [name]: value }));
+        }
         setSaveStatus(null);
     };
+
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -139,7 +174,10 @@ const ConfigModal = ({ isOpen, onClose }) => {
                                             {browsing === 'tachiePath' ? <Loader2 className="spinner" size={16} /> : <FolderOpen size={16} />}
                                         </button>
                                     </div>
-                                    <span className="field-hint">AI嫁の立ち絵画像が格納されているフォルダパス</span>
+                                    <span className="field-hint">
+                                        AI嫁の立ち絵画像が格納されているフォルダパス<br />
+                                        <span style={{ color: '#ff9800' }}>※変更は次回エージェント起動時から有効になります</span>
+                                    </span>
                                 </div>
 
                                 <div className="form-group">
@@ -194,6 +232,115 @@ const ConfigModal = ({ isOpen, onClose }) => {
                                     </select>
                                     <span className="field-hint">チャットを送信するショートカット（未設定のEnterは改行になります）</span>
                                 </div>
+                            </div>
+
+                            <div className="config-section">
+                                <h4 className="section-title">Text to Speech (音声合成)</h4>
+                                
+                                <div className="form-group checkbox-col" style={{ marginBottom: '16px' }}>
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            name="ttsEnabled"
+                                            checked={config.ttsEnabled || false}
+                                            onChange={handleChange}
+                                        />
+                                        <span className="checkbox-text" style={{ fontWeight: 'bold' }}>音声合成 (TTS) を有効にする</span>
+                                    </label>
+                                    <span className="field-hint">有効にすると、AI嫁の返答時に自動で音声を合成しブラウザで再生します。</span>
+                                </div>
+
+                                {config.ttsEnabled && (
+                                    <>
+                                        <div className="form-group" style={{ marginBottom: '16px' }}>
+                                            <label>TTS Provider (プロバイダー)</label>
+                                            <select
+                                                name="ttsProvider"
+                                                value={config.ttsProvider || 'irodori'}
+                                                onChange={handleChange}
+                                                className="config-input config-select"
+                                            >
+                                                <option value="irodori">Irodori-TTS (ローカルAPI)</option>
+                                                <option value="voicevox">VOICEVOX (将来用)</option>
+                                            </select>
+                                        </div>
+
+                                        {/* 動的フォーム：Irodori-TTS の設定項目 */}
+                                        {config.ttsProvider === 'irodori' && (
+                                            <div className="provider-settings-box" style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px' }}>
+                                                <div className="form-group">
+                                                    <label>API Host URL</label>
+                                                    <input
+                                                        type="text"
+                                                        name="ttsSettings.irodori.url"
+                                                        value={config.ttsSettings?.irodori?.url ?? 'http://localhost:8088'}
+                                                        onChange={handleChange}
+                                                        className="config-input"
+                                                        placeholder="http://localhost:8088"
+                                                    />
+                                                    <span className="field-hint">Irodori-TTS Serverの稼働先URL (ポート含む)</span>
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label>Reference Voice (リファレンス音声名)</label>
+                                                    <input
+                                                        type="text"
+                                                        name="ttsSettings.irodori.voice"
+                                                        value={config.ttsSettings?.irodori?.voice ?? 'sample'}
+                                                        onChange={handleChange}
+                                                        className="config-input"
+                                                        placeholder="sample"
+                                                    />
+                                                    <span className="field-hint">voices/内にあるWAVファイル名 (拡張子なし)</span>
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label>Voice Generation Seed (シード値)</label>
+                                                    <input
+                                                        type="number"
+                                                        name="ttsSettings.irodori.seed"
+                                                        value={config.ttsSettings?.irodori?.seed ?? 42}
+                                                        onChange={handleChange}
+                                                        className="config-input"
+                                                        placeholder="42"
+                                                    />
+                                                    <span className="field-hint">声質を固定するシード（-1でランダム）</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 動的フォーム：VOICEVOXの設定項目 */}
+                                        {config.ttsProvider === 'voicevox' && (
+                                            <div className="provider-settings-box" style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px' }}>
+                                                <div className="form-group">
+                                                    <label>VOICEVOX API URL</label>
+                                                    <input
+                                                        type="text"
+                                                        name="ttsSettings.voicevox.url"
+                                                        value={config.ttsSettings?.voicevox?.url ?? 'http://localhost:50021'}
+                                                        onChange={handleChange}
+                                                        className="config-input"
+                                                        placeholder="http://localhost:50021"
+                                                    />
+                                                    <span className="field-hint">VOICEVOXのAPIサーバー稼働先URL</span>
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label>Speaker ID (話者ID / キャラクター番号)</label>
+                                                    <input
+                                                        type="number"
+                                                        name="ttsSettings.voicevox.speakerId"
+                                                        value={config.ttsSettings?.voicevox?.speakerId ?? 1}
+                                                        onChange={handleChange}
+                                                        className="config-input"
+                                                        placeholder="1"
+                                                    />
+                                                    <span className="field-hint">ずんだもん(3)、四国めたん(2)などの話者ID</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
 
                             <div className="config-section">

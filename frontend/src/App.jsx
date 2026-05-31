@@ -47,7 +47,7 @@ function App() {
 
   useEffect(() => {
     loadConfig();
-    const pollLatestImage = async () => {
+    const loadLatestImage = async () => {
       try {
         const res = await fetch(LATEST_IMAGE_URL);
         const data = await res.json();
@@ -63,9 +63,7 @@ function App() {
       }
     };
 
-    pollLatestImage();
-    const intervalId = setInterval(pollLatestImage, POLL_INTERVAL);
-    return () => clearInterval(intervalId);
+    loadLatestImage();
   }, []);
 
   const handleExpressionChange = (expression) => {
@@ -80,6 +78,16 @@ function App() {
     setCustomBgUrl(url);
     setBgLoaded(false);
     setBgImageUrl(`${BACKEND_BASE}${url}`);
+  };
+
+  const handleLatestImageUpdate = (data) => {
+    if (data.filename && data.timestamp !== lastTimestampRef.current) {
+      console.log('Realtime background image update received via WS:', data.filename);
+      lastTimestampRef.current = data.timestamp;
+      const fullUrl = `${BACKEND_BASE}${data.url}?t=${data.timestamp}`;
+      setBgLoaded(false);
+      setBgImageUrl(fullUrl);
+    }
   };
 
   const tachieUrl = tachieExpression
@@ -121,6 +129,7 @@ function App() {
           onConfigChange={loadConfig} // To refresh styles when config is saved
           onExpressionChange={handleExpressionChange}
           onOpenGallery={() => setIsGalleryOpen(true)}
+          onLatestImageUpdate={handleLatestImageUpdate}
         />
       </main>
 

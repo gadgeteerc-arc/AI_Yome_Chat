@@ -5,7 +5,10 @@ const chokidar = require('chokidar');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = fs.promises;
 const { execSync } = require('child_process');
+const ttsManager = require('./tts_providers');
+
 
 // コマンドライン引数からコンフィグパスを取得（デフォルト: data/default_config.json）
 const args = process.argv.slice(2);
@@ -24,6 +27,45 @@ const isSafePath = (targetPath) => {
     return absolutePath.startsWith(absoluteRoot);
 };
 
+const safeWriteJsonSync = (filePath, data) => {
+    const tempPath = filePath + '.tmp';
+    try {
+        fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
+        fs.renameSync(tempPath, filePath);
+    } catch (err) {
+        console.error(`Failed to write atomically to ${filePath}:`, err);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    }
+};
+
+const safeWriteJson = async (filePath, data) => {
+    const tempPath = filePath + '.tmp';
+    try {
+        const jsonStr = JSON.stringify(data, null, 2);
+        await fsPromises.writeFile(tempPath, jsonStr, 'utf8');
+        
+        let attempts = 0;
+        while (attempts < 5) {
+            try {
+                await fsPromises.rename(tempPath, filePath);
+                break;
+            } catch (renameErr) {
+                attempts++;
+                if (attempts >= 5) throw renameErr;
+                // Windowsのファイルロック競合に備え50ms待機してリトライ
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+    } catch (err) {
+        console.error(`Failed to write atomically to ${filePath}:`, err);
+        try {
+            await fsPromises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+        } catch (fallbackErr) {
+            console.error(`Critical error: Fallback write failed for ${filePath}:`, fallbackErr);
+        }
+    }
+};
+
 
 // コンフィグの初期値
 const DEFAULT_CONFIG = {
@@ -34,8 +76,18 @@ const DEFAULT_CONFIG = {
     accentColor: "#a855f7",
     glassIntensity: 20,
     fontSize: 16,
-    showTimestamp: true
+    showTimestamp: true,
+    ttsEnabled: false,
+    ttsProvider: "irodori",
+    ttsSettings: {
+        irodori: {
+            url: "http://localhost:8088",
+            voice: "sample",
+            seed: 42
+        }
+    }
 };
+
 
 const app = express();
 app.use(cors());
@@ -57,14 +109,22 @@ if (!fs.existsSync(configDir)) {
 
 // コンフィグファイルが存在しない場合はデフォルトで作成
 if (!fs.existsSync(CONFIG_FILE)) {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
+    safeWriteJsonSync(CONFIG_FILE, DEFAULT_CONFIG);
 }
 
 // コンフィグのロードとパスの解決関数
 const loadConfig = () => {
     try {
         const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        return {
+            ...DEFAULT_CONFIG,
+            ...parsed,
+            ttsSettings: {
+                ...DEFAULT_CONFIG.ttsSettings,
+                ...(parsed.ttsSettings || {})
+            }
+        };
     } catch (err) {
         console.error('Error reading config file:', err);
         return DEFAULT_CONFIG;
@@ -89,6 +149,74 @@ let currentConfig = loadConfig();
 let currentMessagesFile = getMessagesJsonPath();
 let currentImagesDir = getGeneratedImagesPath(currentConfig);
 let currentTachieDir = getTachiePath(currentConfig);
+
+// TTS音声ファイル保存用ディレクトリの初期化
+const AUDIO_DIR = path.join(__dirname, 'public', 'audio');
+if (!fs.existsSync(AUDIO_DIR)) {
+    fs.mkdirSync(AUDIO_DIR, { recursive: true });
+}
+
+// 古い音声ファイルを自動削除してクリーンにするお！
+const cleanupOldAudioFiles = () => {
+    try {
+        if (!fs.existsSync(AUDIO_DIR)) return;
+        const files = fs.readdirSync(AUDIO_DIR)
+            .filter(f => f.endsWith('.wav'))
+            .map(f => {
+                const filePath = path.join(AUDIO_DIR, f);
+                const stat = fs.statSync(filePath);
+                return { name: f, path: filePath, mtime: stat.mtimeMs };
+            });
+        files.sort((a, b) => a.mtime - b.mtime);
+        if (files.length > 30) {
+            const toDelete = files.slice(0, files.length - 30);
+            for (const file of toDelete) {
+                fs.unlinkSync(file.path);
+                console.log(`[TTS-Cleanup] Deleted old audio file: ${file.name}`);
+            }
+        }
+    } catch (err) {
+        console.error('[TTS-Cleanup] Failed to clean up old audio files:', err);
+    }
+};
+
+// 非同期で音声合成を実行して、WebSocketで全クライアントに配信するお！
+const synthesizeAndBroadcast = async (text, messageId) => {
+    try {
+        if (!text || !text.trim()) return;
+
+        console.log(`[TTS] Requesting synthesis for: "${text.substring(0, 30)}..."`);
+        const { buffer } = await ttsManager.synthesizeSpeech(
+            text,
+            currentConfig.ttsProvider,
+            currentConfig.ttsSettings
+        );
+
+        const audioFile = path.join(AUDIO_DIR, `${messageId}.wav`);
+        await fsPromises.writeFile(audioFile, buffer);
+        console.log(`[TTS] Successfully synthesized message ${messageId} to ${audioFile}`);
+
+        // ディスク容量保護のための自動お掃除
+        cleanupOldAudioFiles();
+
+        // クライアント側に「再生しろお！」と通知するお
+        const audioUrl = `/public/audio/${messageId}.wav`;
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                    type: 'play-audio',
+                    payload: {
+                        messageId: messageId,
+                        audioUrl: audioUrl
+                    }
+                }));
+            }
+        });
+    } catch (err) {
+        console.error(`[TTS] Failed to synthesize speech for message ${messageId}:`, err);
+    }
+};
+
 
 // 画像配信用の動的ルートを設定
 const setupImageServing = (imagesDir) => {
@@ -124,7 +252,7 @@ const initMessagesFile = (jsonFile) => {
         fs.mkdirSync(dataDir, { recursive: true });
     }
     if (!fs.existsSync(jsonFile)) {
-        fs.writeFileSync(jsonFile, JSON.stringify([]));
+        safeWriteJsonSync(jsonFile, []);
     }
 };
 
@@ -150,17 +278,21 @@ wss.on('connection', (ws) => {
 // JSONファイルの監視用変数
 let watcher = null;
 
-const setupWatcher = (jsonFile) => {
+const setupWatcher = async (jsonFile) => {
     if (watcher) {
-        watcher.close();
+        try {
+            await watcher.close();
+        } catch (err) {
+            console.error('Failed to close old watcher:', err);
+        }
     }
     initMessagesFile(jsonFile);
 
     watcher = chokidar.watch(jsonFile, { awaitWriteFinish: true });
-    watcher.on('change', (filePath) => {
+    watcher.on('change', async (filePath) => {
         console.log(`Detected change in ${filePath}`);
         try {
-            const data = fs.readFileSync(jsonFile, 'utf8');
+            const data = await fsPromises.readFile(jsonFile, 'utf8');
             const parsedData = JSON.parse(data);
 
             // 全ての接続クライアントに更新内容をブロードキャスト
@@ -169,24 +301,88 @@ const setupWatcher = (jsonFile) => {
                     client.send(JSON.stringify({ type: 'update', payload: parsedData }));
                 }
             });
+
+            // もしTTSが有効で、最後のメッセージが嫁だったら、自動音声合成をキックするお！
+            if (currentConfig.ttsEnabled && parsedData.length > 0) {
+                const lastMsg = parsedData[parsedData.length - 1];
+                if (lastMsg.role === 'yome' && lastMsg.text && lastMsg.id) {
+                    const audioFile = path.join(AUDIO_DIR, `${lastMsg.id}.wav`);
+                    // 重複合成を防ぐためにファイル存在チェックをかけるお！
+                    if (!fs.existsSync(audioFile)) {
+                        synthesizeAndBroadcast(lastMsg.text, lastMsg.id);
+                    }
+                }
+            }
         } catch (err) {
             console.error('Error reading/parsing JSON after change:', err);
         }
     });
 };
 
+let imageWatcher = null;
+const setupImageWatcher = async (imagesDir) => {
+    if (imageWatcher) {
+        try {
+            await imageWatcher.close();
+        } catch (err) {
+            console.error('Failed to close old image watcher:', err);
+        }
+    }
+    if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+    }
+
+    const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
+
+    imageWatcher = chokidar.watch(imagesDir, {
+        awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 100
+        },
+        ignoreInitial: true
+    });
+
+    imageWatcher.on('add', async (filePath) => {
+        const ext = path.extname(filePath).toLowerCase();
+        if (IMAGE_EXTENSIONS.includes(ext)) {
+            const filename = path.basename(filePath);
+            console.log(`Detected new image: ${filename}`);
+            try {
+                const stats = await fsPromises.stat(filePath);
+                const msg = JSON.stringify({
+                    type: 'latest-image',
+                    payload: {
+                        filename: filename,
+                        timestamp: stats.mtimeMs,
+                        url: `/generated-images/${encodeURIComponent(filename)}`
+                    }
+                });
+
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(msg);
+                    }
+                });
+            } catch (err) {
+                console.error('Error handling new image watch event:', err);
+            }
+        }
+    });
+};
+
 // 最初の監視スタート
 setupWatcher(currentMessagesFile);
+setupImageWatcher(currentImagesDir);
 
 // フロントからのメッセージを受け取るAPI
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', async (req, res) => {
     try {
         const { role, text, expression } = req.body;
         if (!role || !text) {
             return res.status(400).json({ error: 'Missing role or text' });
         }
 
-        const data = fs.readFileSync(currentMessagesFile, 'utf8');
+        const data = await fsPromises.readFile(currentMessagesFile, 'utf8');
         const messages = JSON.parse(data);
 
         // idとtimestampの付与 (send_yome.pyと仕様を揃える)
@@ -205,7 +401,7 @@ app.post('/api/chat', (req, res) => {
         console.log('\n--- New Message Received ---');
         console.log(JSON.stringify(newMsg, null, 2));
 
-        fs.writeFileSync(currentMessagesFile, JSON.stringify(messages, null, 2));
+        await safeWriteJson(currentMessagesFile, messages);
         res.json({ success: true });
     } catch (err) {
         console.error('Error saving message:', err);
@@ -218,7 +414,7 @@ app.get('/api/config', (req, res) => {
     res.json(loadConfig());
 });
 
-app.post('/api/config', (req, res) => {
+app.post('/api/config', async (req, res) => {
     try {
         const newConfig = req.body;
         // 必須キー（最低限ディレクトリ系）のチェック
@@ -233,7 +429,7 @@ app.post('/api/config', (req, res) => {
 
 
         // コンフィグ保存
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2));
+        await safeWriteJson(CONFIG_FILE, newConfig);
         currentConfig = newConfig;
 
         // メッセージファイルの監視パスは固定だが、念のため再設定しない（固定化済み）
@@ -245,6 +441,7 @@ app.post('/api/config', (req, res) => {
             console.log(`Config updated. Switching images dir to: ${newImagesDir}`);
             currentImagesDir = newImagesDir;
             setupImageServing(currentImagesDir);
+            await setupImageWatcher(currentImagesDir);
         }
 
         // 立ち絵フォルダの配信パスを更新

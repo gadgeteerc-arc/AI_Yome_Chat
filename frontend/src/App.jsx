@@ -3,9 +3,8 @@ import Chat from './components/Chat';
 import ImageGallery from './components/ImageGallery';
 import './App.css';
 
-const LATEST_IMAGE_URL = 'http://localhost:3001/api/latest-image';
-const BACKEND_BASE = 'http://localhost:3001';
-const POLL_INTERVAL = 5000; // 5秒ごとにポーリング
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const LATEST_IMAGE_URL = `${BACKEND_BASE}/api/latest-image`;
 
 function App() {
   const [bgImageUrl, setBgImageUrl] = useState(null);

@@ -4,8 +4,9 @@ import classNames from 'classnames';
 import { X, Save, FolderOpen, Loader2, Search } from 'lucide-react';
 import './ConfigModal.css';
 
-const API_URL = 'http://localhost:3001/api/config';
-const BROWSE_URL = 'http://localhost:3001/api/browse';
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const API_URL = `${BACKEND_BASE}/api/config`;
+const BROWSE_URL = `${BACKEND_BASE}/api/browse`;
 
 const ConfigModal = ({ isOpen, onClose }) => {
     const [config, setConfig] = useState({
@@ -261,7 +262,7 @@ const ConfigModal = ({ isOpen, onClose }) => {
                                                 className="config-input config-select"
                                             >
                                                 <option value="irodori">Irodori-TTS (ローカルAPI)</option>
-                                                <option value="voicevox">VOICEVOX (将来用)</option>
+                                                <option value="voicevox" disabled>VOICEVOX (未実装・将来用)</option>
                                             </select>
                                         </div>
 

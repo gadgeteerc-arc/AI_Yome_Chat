@@ -464,8 +464,7 @@ app.post('/api/config', async (req, res) => {
 // 画像一覧取得
 app.get('/api/images', (req, res) => {
     try {
-        const config = loadConfig();
-        const dir = config.generatedImagesPath;
+        const dir = currentImagesDir;
 
         if (!fs.existsSync(dir)) {
             console.log('Generated images directory not found:', dir);
@@ -503,8 +502,7 @@ app.get('/api/images', (req, res) => {
 app.delete('/api/images/:filename', (req, res) => {
     try {
         const { filename } = req.params;
-        const config = loadConfig();
-        const filePath = path.join(config.generatedImagesPath, filename);
+        const filePath = path.join(currentImagesDir, filename);
 
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'File not found' });
@@ -512,7 +510,7 @@ app.delete('/api/images/:filename', (req, res) => {
 
         // セキュリティチェック
         const absolutePath = path.resolve(filePath);
-        const absoluteDirPath = path.resolve(config.generatedImagesPath);
+        const absoluteDirPath = currentImagesDir;
         if (!absolutePath.startsWith(absoluteDirPath)) {
             return res.status(403).json({ error: 'Forbidden' });
         }

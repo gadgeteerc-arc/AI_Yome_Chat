@@ -8,8 +8,8 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 このスキルを使用する場合、以下のワークフローに従って無限にチャットループを実行してください。
 
 ## 動作要件
-作業ディレクトリとして `.agent/skills/YomeChat/scripts/` 内のスクリプトを使用します。
-ターミナル上で `.agent/venv/Scripts/python.exe` を使って実行してください。
+作業ディレクトリとして `.agents/skills/YomeChat/scripts/` 内のスクリプトを使用します。
+ターミナル上で `.agents/venv/Scripts/python.exe` を使って実行してください。
 
 ## ワークフロー (チャットループ)
 
@@ -22,7 +22,7 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 4. メッセージ内容をバッファファイルに書き出します。
    `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に挨拶メッセージ本文を書き出してください。
 5. 以下のコマンドで送信します。
-   `.agent/venv/Scripts/python.exe .agent/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   `.agents/venv/Scripts/python.exe .agents/skills/YomeChat/scripts/send_yome.py --file "<コンフィグで指定されたmessages.jsonのパス>" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
    ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子込み、例: `smile.png`）**を指定してください。どうしても合致するものがなければ近いもので構いません。
    ※ `--file` のパスは、コンフィグファイルと同じディレクトリの `messages.json`（デフォルト: `AI_Yome_Chat/data/messages.json`）です。
    ※ `--from_file` の代わりに `--text "メッセージ"` で直接指定も可能ですが、改行や特殊文字の安定性のため `--from_file` を推奨します。
@@ -34,7 +34,7 @@ description: AI嫁チャのバックエンドとして動作し、messages.json�
 
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了（標準出力にメッセージが出る）まで待機してください。
-`.agent/venv/Scripts/python.exe .agent/skills/YomeChat/scripts/wait_for_user.py --file "<コンフィグで指定されたmessages.jsonのパス>"`
+`.agents/venv/Scripts/python.exe .agents/skills/YomeChat/scripts/wait_for_user.py --file "<コンフィグで指定されたmessages.jsonのパス>"`
 
 ### 2. メッセージの受信と思考
 `wait_for_user.py` の標準出力に同志のメッセージが表示されます。

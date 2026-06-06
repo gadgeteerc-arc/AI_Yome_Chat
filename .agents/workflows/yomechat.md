@@ -9,7 +9,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 このワークフローを使用する場合、以下の手順に従って無限にチャットループを実行してください。
 
 ## 動作要件
-作業ディレクトリとして `.agent/skills/YomeChat/scripts/` 内のスクリプトを使用します。
+作業ディレクトリとして `.agents/skills/YomeChat/scripts/` 内のスクリプトを使用します。
 ターミナル上で `python` を使って実行してください。
 
 ## ワークフロー (チャットループ)
@@ -23,7 +23,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 4. メッセージ内容をバッファファイルに書き出します。
    `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に挨拶メッセージ本文を書き出してください。
 5. 以下のコマンドで送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   `python .agents/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
    ※ `expression` は、**取得した一覧の中で現在の状況や感情に最も近しいファイル名（拡張子込み、例: `smile.png`）**を指定してください。どうしても合致するものがなければ近いもので構いません。
    ※ `--file` のパスはコンフィグで変更されている場合は適切なパスを指定してください。
    ※ `--from_file` の代わりに `--text "メッセージ"` で直接指定も可能ですが、改行や特殊文字の安定性のため `--from_file` を推奨します。
@@ -35,7 +35,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 
 ### 1. ユーザーメッセージの待機
 同志からの返信を待ちます。以下のコマンドを実行し、完了するまで**完全に思考を停止して**待機してください。
-`python .agent/skills/YomeChat/scripts/wait_for_user.py --file "AI_Yome_Chat/data/messages.json"`
+`python .agents/skills/YomeChat/scripts/wait_for_user.py --file "AI_Yome_Chat/data/messages.json"`
 
 ### 2. メッセージの受信と思考
 `wait_for_user.py` の標準出力に同志のメッセージが表示されます。
@@ -45,7 +45,7 @@ description: AI嫁チャの自律ループを自動承認で開始する
 思考がまとまったら、以下の手順でメッセージを送信します。
 1. `write_to_file` ツール等で一時ファイル（例: `/tmp/yome_buffer.txt`）に返信メッセージ本文を書き出してください。
 2. 以下のコマンドで送信します。
-   `python .agent/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
+   `python .agents/skills/YomeChat/scripts/send_yome.py --file "AI_Yome_Chat/data/messages.json" --from_file "/tmp/yome_buffer.txt" --expression "<マッピングした表情ファイル名>"`
 ※ `expression` には、初回取得した一覧の中から現在の感情に最も近しい実際のファイル名（拡張子込み、例: `happy.png`）を指定してください。
 
 ### 4. ループと終了判定

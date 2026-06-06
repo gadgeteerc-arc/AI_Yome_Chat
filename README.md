@@ -166,6 +166,11 @@ Antigravity V2環境では、ワークスペースルートに `AGENTS.md`（旧
 
 ```bash
 # watchdogのインストール
+# (Windows仮想環境などで pip 自体が欠損している場合は、以下のコマンドで pip をセットアップしてから watchdog を入れてください)
+# python -m ensurepip
+# python -m pip install watchdog
+
+# 通常環境の場合は以下でインストール可能です：
 pip install watchdog
 
 # 各サーバーのインストール

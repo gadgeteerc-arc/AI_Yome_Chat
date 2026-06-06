@@ -31,11 +31,12 @@ async function synthesize(text, settings) {
 
     console.log(`[TTS-Irodori] Calling API: ${endpoint} for text: "${text.substring(0, 30)}..."`);
     
-    // 古いNode.js環境でも動作するように、AbortControllerを使用したクラシックなタイムアウトだお！
+    // 初回モデルロード（Lazy Load）による長時間の初期化待機（最大3分程度）に対応するため、
+    // タイムアウトを 5分（300000ms）に大幅に引き上げるお！
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         controller.abort();
-    }, 10000); // 10秒でタイムアウト
+    }, 300000); // 5分でタイムアウト
 
     try {
         const response = await fetch(endpoint, {
@@ -56,7 +57,7 @@ async function synthesize(text, settings) {
         return Buffer.from(arrayBuffer);
     } catch (err) {
         if (err.name === 'AbortError') {
-            throw new Error(`Irodori-TTS API request timed out after 10000ms (check if Irodori-TTS Server is frozen or overloaded)`);
+            throw new Error(`Irodori-TTS API request timed out after 300000ms (check if Irodori-TTS Server is frozen or overloaded)`);
         }
         throw err;
     } finally {

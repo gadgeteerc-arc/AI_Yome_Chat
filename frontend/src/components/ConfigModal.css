@@ -27,6 +27,9 @@
 .modal-content {
     width: 90%;
     max-width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     background: rgba(20, 21, 35, 0.85);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -96,6 +99,8 @@
 
 .modal-body {
     padding: 24px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .loading-state {

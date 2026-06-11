@@ -13,12 +13,17 @@ const ttsManager = require('./tts_providers');
 // コマンドライン引数からコンフィグパスを取得（デフォルト: data/default_config.json）
 const args = process.argv.slice(2);
 const configArgIndex = args.indexOf('--config');
-// デフォルトのコンフィグ場所をルートの data フォルダに変更
-const CONFIG_FILE = configArgIndex !== -1 && args[configArgIndex + 1]
-    ? path.resolve(args[configArgIndex + 1])
-    : path.resolve(__dirname, '..', 'data', 'default_config.json');
-
 const PROJECT_ROOT = path.resolve(__dirname, '..');
+
+const configArg = configArgIndex !== -1 && args[configArgIndex + 1]
+    ? args[configArgIndex + 1]
+    : null;
+
+// 絶対パスでない場合はPROJECT_ROOT基準で解決するお
+const CONFIG_FILE = configArg
+    ? (path.isAbsolute(configArg) ? configArg : path.resolve(PROJECT_ROOT, configArg))
+    : path.resolve(PROJECT_ROOT, 'data', 'default_config.json');
+
 const PID_FILE = path.resolve(path.dirname(CONFIG_FILE), 'server.pid');
 
 const isSafePath = (targetPath) => {
@@ -107,9 +112,32 @@ if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
 }
 
-// コンフィグファイルが存在しない場合はデフォルトで作成
+// コンフィグファイルが存在しない場合は、古い設定ファイルからの自動移行を試みるお
 if (!fs.existsSync(CONFIG_FILE)) {
-    safeWriteJsonSync(CONFIG_FILE, DEFAULT_CONFIG);
+    const legacyPaths = [
+        path.resolve(PROJECT_ROOT, 'data', 'agent_mio.json'),
+        path.resolve(PROJECT_ROOT, 'backend', 'data', 'agent_mio.json'),
+        path.resolve(PROJECT_ROOT, 'data', 'yome_chat_config.json'),
+        path.resolve(PROJECT_ROOT, 'backend', 'data', 'yome_chat_config.json')
+    ];
+    
+    let migrated = false;
+    for (const legacyPath of legacyPaths) {
+        if (fs.existsSync(legacyPath)) {
+            try {
+                fs.copyFileSync(legacyPath, CONFIG_FILE);
+                console.log(`[Migration] Successfully migrated config from legacy file: ${legacyPath} to ${CONFIG_FILE}`);
+                migrated = true;
+                break;
+            } catch (copyErr) {
+                console.error(`[Migration] Failed to copy config from ${legacyPath}:`, copyErr);
+            }
+        }
+    }
+
+    if (!migrated) {
+        safeWriteJsonSync(CONFIG_FILE, DEFAULT_CONFIG);
+    }
 }
 
 // コンフィグのロードとパスの解決関数
